@@ -199,6 +199,8 @@
             margin-bottom: 0.5rem;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         input[type="range"] {
@@ -285,6 +287,8 @@
             padding: 0.15rem 0.5rem;
             border-radius: 12px;
             font-weight: 700;
+            white-space: nowrap;
+            transition: all 0.2s;
         }
     </style>
 </head>
@@ -377,11 +381,14 @@
     const MAX_TOKENS = 200000;
     const SYSTEM_TOKENS = 5000;
     const AGENTS_MD_TOKENS = 4000;
+    const COMPACT_SUMMARY_TOKENS = 6000;
     
-    let chatTokensPerTurn = 3200;
+    const chatTokensPerTurn = 3200;
     let toolTokens = 0;
     let currentTurns = 3;
     let isCompacted = false;
+    let compactedAtTurn = 0;
+    let compactedBaseChatTokens = 0;
 
     const tokenCount = document.getElementById('tokenCount');
     const segSystem = document.getElementById('segSystem');
@@ -394,31 +401,76 @@
     const statusText = document.getElementById('statusText');
     const takeawayBox = document.getElementById('takeawayBox');
 
+    function getChatTokens() {
+        if (!isCompacted) {
+            return currentTurns * chatTokensPerTurn;
+        }
+        if (currentTurns >= compactedAtTurn) {
+            const newTurns = currentTurns - compactedAtTurn;
+            return compactedBaseChatTokens + (newTurns * chatTokensPerTurn);
+        } else {
+            // Slider moved below the previous compaction turn:
+            // Adjust the compaction anchor to the current turn so it remains compacted smoothly
+            compactedAtTurn = currentTurns;
+            compactedBaseChatTokens = Math.min(currentTurns * chatTokensPerTurn, COMPACT_SUMMARY_TOKENS);
+            return compactedBaseChatTokens;
+        }
+    }
+
     function updateView() {
-        let chatTokens = isCompacted ? 6000 : currentTurns * chatTokensPerTurn;
-        let total = SYSTEM_TOKENS + AGENTS_MD_TOKENS + chatTokens + toolTokens;
-        if (total > MAX_TOKENS) total = MAX_TOKENS;
+        const chatTokens = getChatTokens();
+        const rawTotal = SYSTEM_TOKENS + AGENTS_MD_TOKENS + chatTokens + toolTokens;
+        const total = Math.min(rawTotal, MAX_TOKENS);
 
         const pctSystem = (SYSTEM_TOKENS / MAX_TOKENS) * 100;
         const pctAgents = (AGENTS_MD_TOKENS / MAX_TOKENS) * 100;
         const pctChat = (chatTokens / MAX_TOKENS) * 100;
         const pctTools = (toolTokens / MAX_TOKENS) * 100;
-        const totalPct = ((total / MAX_TOKENS) * 100).toFixed(1);
+        const totalPct = ((rawTotal / MAX_TOKENS) * 100).toFixed(1);
 
         segSystem.style.width = pctSystem + '%';
         segAgents.style.width = pctAgents + '%';
         segChat.style.width = pctChat + '%';
         segTools.style.width = pctTools + '%';
 
-        tokenCount.textContent = `${total.toLocaleString()} / ${MAX_TOKENS.toLocaleString()} tokens (${totalPct}%)`;
-        turnLabel.textContent = isCompacted ? `${currentTurns} turns (compacted)` : `${currentTurns} turns`;
+        segSystem.title = `System & Tool Specs: ${SYSTEM_TOKENS.toLocaleString()} tokens`;
+        segAgents.title = `AGENTS.md: ${AGENTS_MD_TOKENS.toLocaleString()} tokens`;
+        segTools.title = `Tool / File Dumps: ${toolTokens.toLocaleString()} tokens`;
+
+        if (rawTotal > MAX_TOKENS) {
+            tokenCount.textContent = `${rawTotal.toLocaleString()} / ${MAX_TOKENS.toLocaleString()} tokens (${totalPct}% - OVERFLOW)`;
+        } else {
+            tokenCount.textContent = `${total.toLocaleString()} / ${MAX_TOKENS.toLocaleString()} tokens (${totalPct}%)`;
+        }
+
+        // Update badge text and appearance
+        const turnStr = currentTurns === 1 ? 'turn' : 'turns';
+        if (!isCompacted) {
+            turnLabel.textContent = `${currentTurns} ${turnStr}`;
+            turnLabel.style.backgroundColor = '#e0f2fe';
+            turnLabel.style.color = '#0369a1';
+            segChat.title = `Chat History: ${chatTokens.toLocaleString()} tokens (${currentTurns} turns @ ~3.2k tokens/turn)`;
+        } else {
+            const newTurns = Math.max(0, currentTurns - compactedAtTurn);
+            const newTurnStr = newTurns === 1 ? 'turn' : 'turns';
+            if (newTurns === 0) {
+                turnLabel.textContent = `${currentTurns} ${turnStr} (compacted)`;
+            } else {
+                turnLabel.textContent = `${currentTurns} ${turnStr} (${compactedAtTurn} compacted + ${newTurns} new)`;
+            }
+            turnLabel.style.backgroundColor = '#ecfdf5';
+            turnLabel.style.color = '#065f46';
+            segChat.title = `Chat History: ${chatTokens.toLocaleString()} tokens (Summary: ${compactedBaseChatTokens.toLocaleString()} + ${newTurns} new ${newTurnStr} @ ~3.2k tokens/turn)`;
+        }
 
         // Status thresholds
-        if (totalPct < 40) {
+        if (Number(totalPct) < 40) {
             statusDot.className = 'status-indicator status-good';
             statusText.innerHTML = '<strong>Optimal Working Memory:</strong> The agent has crystal-clear recall of instructions, styles, and strain names. Response latency is low.';
-            takeawayBox.innerHTML = '<strong>Tip:</strong> Keep conversations focused on one specific figure or module to maintain this green state.';
-        } else if (totalPct < 75) {
+            takeawayBox.innerHTML = isCompacted
+                ? '<strong>Compacted State:</strong> Conversation history has been safely condensed into summary memory. Each additional turn now only adds ~3.2k tokens incrementally.'
+                : '<strong>Tip:</strong> Keep conversations focused on one specific figure or module to maintain this green state.';
+        } else if (Number(totalPct) < 75) {
             statusDot.className = 'status-indicator status-warn';
             statusText.innerHTML = '<strong>Attention Dilution Starting:</strong> Working memory is crowded. The agent may occasionally hallucinate earlier variables or overlook minor style rules.';
             takeawayBox.innerHTML = '<strong>Recommendation:</strong> Consider running <code>/compact</code> now to summarize the progress and clear raw error logs!';
@@ -431,25 +483,29 @@
 
     turnSlider.addEventListener('input', (e) => {
         currentTurns = parseInt(e.target.value);
-        isCompacted = false;
         updateView();
     });
 
     document.getElementById('btnDumpCsv').addEventListener('click', () => {
         toolTokens += 70000;
-        isCompacted = false;
         updateView();
     });
 
     document.getElementById('btnReadGenome').addEventListener('click', () => {
         toolTokens += 90000;
-        isCompacted = false;
         updateView();
     });
 
     document.getElementById('btnCompact').addEventListener('click', () => {
-        toolTokens = Math.floor(toolTokens * 0.05); // Compact dumps away
         isCompacted = true;
+        compactedAtTurn = currentTurns;
+        compactedBaseChatTokens = Math.min(currentTurns * chatTokensPerTurn, COMPACT_SUMMARY_TOKENS);
+        toolTokens = Math.floor(toolTokens * 0.05); // Compact dumps away to tiny summary references
+        
+        // Ensure slider has enough range ahead so user can test plenty of turns after compaction
+        if (compactedAtTurn + 30 > parseInt(turnSlider.max)) {
+            turnSlider.max = compactedAtTurn + 30;
+        }
         updateView();
     });
 
@@ -457,6 +513,9 @@
         currentTurns = 2;
         toolTokens = 0;
         isCompacted = false;
+        compactedAtTurn = 0;
+        compactedBaseChatTokens = 0;
+        turnSlider.max = 50;
         turnSlider.value = 2;
         updateView();
     });
