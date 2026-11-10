@@ -9,6 +9,7 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.oxml import parse_xml
 
 # --- Presentation Setup ---
 prs = Presentation()
@@ -81,6 +82,210 @@ def add_card(slide, left, top, width, height, bg_color=COLOR_CARD_BG, border_col
     return shape
 
 
+# --- Animation System ---
+def generate_timing_element(steps, bld_shapes=None):
+    """
+    Builds the OpenXML <p:timing> element with sequential entrance effects.
+    steps: list of clicks. Each click is a list of targets:
+        target = {
+            'spid': int,
+            'p_range': (start, end) or None  # None for whole shape
+        }
+    bld_shapes: set/list of shape IDs that have paragraph builds
+    """
+    id_counter = 3
+    seq_children_xml = []
+    
+    for step_targets in steps:
+        if not step_targets:
+            continue
+            
+        par_effects = []
+        for idx, tgt in enumerate(step_targets):
+            spid = tgt['spid']
+            p_range = tgt.get('p_range')
+            node_type = "clickEffect" if idx == 0 else "withEffect"
+            
+            c_tn_id = id_counter
+            id_counter += 1
+            bhvr_id = id_counter
+            id_counter += 1
+            
+            if p_range is not None:
+                st, end = p_range
+                tgt_el = f"""<p:tgtEl>
+                              <p:spTgt spid="{spid}">
+                                <p:txEl>
+                                  <p:pRg st="{st}" end="{end}"/>
+                                </p:txEl>
+                              </p:spTgt>
+                            </p:tgtEl>"""
+            else:
+                tgt_el = f"""<p:tgtEl>
+                              <p:spTgt spid="{spid}"/>
+                            </p:tgtEl>"""
+            
+            effect_xml = f"""
+            <p:par>
+              <p:cTn id="{c_tn_id}" presetID="1" presetClass="entr" presetSubtype="0" fill="hold" grpId="0" nodeType="{node_type}">
+                <p:stCondLst>
+                  <p:cond delay="0"/>
+                </p:stCondLst>
+                <p:childTnLst>
+                  <p:set>
+                    <p:cBhvr>
+                      <p:cTn id="{bhvr_id}" dur="1" fill="hold">
+                        <p:stCondLst>
+                          <p:cond delay="0"/>
+                        </p:stCondLst>
+                      </p:cTn>
+                      {tgt_el}
+                      <p:attrNameLst>
+                        <p:attrName>style.visibility</p:attrName>
+                      </p:attrNameLst>
+                    </p:cBhvr>
+                    <p:to>
+                      <p:strVal val="visible"/>
+                    </p:to>
+                  </p:set>
+                </p:childTnLst>
+              </p:cTn>
+            </p:par>"""
+            par_effects.append(effect_xml)
+            
+        wrapper_id1 = id_counter
+        id_counter += 1
+        wrapper_id2 = id_counter
+        id_counter += 1
+        
+        step_xml = f"""
+        <p:par>
+          <p:cTn id="{wrapper_id1}" fill="hold">
+            <p:stCondLst>
+              <p:cond delay="indefinite"/>
+            </p:stCondLst>
+            <p:childTnLst>
+              <p:par>
+                <p:cTn id="{wrapper_id2}" fill="hold">
+                  <p:stCondLst>
+                    <p:cond delay="0"/>
+                  </p:stCondLst>
+                  <p:childTnLst>
+                    {"".join(par_effects)}
+                  </p:childTnLst>
+                </p:cTn>
+              </p:par>
+            </p:childTnLst>
+          </p:cTn>
+        </p:par>"""
+        seq_children_xml.append(step_xml)
+        
+    bld_p_xml = ""
+    if bld_shapes:
+        bld_p_elements = "".join([f'<p:bldP spid="{spid}" grpId="0" uiExpand="1" build="p"/>' for spid in sorted(bld_shapes)])
+        bld_p_xml = f"<p:bldLst>{bld_p_elements}</p:bldLst>"
+        
+    timing_xml = f"""
+    <p:timing xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+      <p:tnLst>
+        <p:par>
+          <p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot">
+            <p:childTnLst>
+              <p:seq concurrent="1" nextAc="seek">
+                <p:cTn id="2" dur="indefinite" nodeType="mainSeq">
+                  <p:childTnLst>
+                    {"".join(seq_children_xml)}
+                  </p:childTnLst>
+                </p:cTn>
+                <p:prevCondLst>
+                  <p:cond evt="onPrev" delay="0">
+                    <p:tgtEl>
+                      <p:sldTgt/>
+                    </p:tgtEl>
+                  </p:cond>
+                </p:prevCondLst>
+                <p:nextCondLst>
+                  <p:cond evt="onNext" delay="0">
+                    <p:tgtEl>
+                      <p:sldTgt/>
+                    </p:tgtEl>
+                  </p:cond>
+                </p:nextCondLst>
+              </p:seq>
+            </p:childTnLst>
+          </p:cTn>
+        </p:par>
+      </p:tnLst>
+      {bld_p_xml}
+    </p:timing>"""
+    return parse_xml(timing_xml.strip())
+
+
+class CardInfo:
+    def __init__(self, card_shape, tb_shape, header_paras=1, is_bullet_card=True, extra_shapes=None):
+        self.card_shape = card_shape
+        self.tb_shape = tb_shape
+        self.header_paras = header_paras
+        self.is_bullet_card = is_bullet_card
+        self.extra_shapes = extra_shapes or []
+
+
+def apply_card_animations(slide, cards):
+    """
+    Applies animations to a slide:
+    - If > 2 bounding boxes: Every bounding box appears on click.
+    - If 1 or 2 bounding boxes: Every bullet point appears on click.
+    """
+    if not cards:
+        return
+        
+    steps = []
+    bld_shapes = set()
+    
+    if len(cards) > 2:
+        for card in cards:
+            click_targets = [{'spid': card.card_shape.shape_id}]
+            if card.tb_shape:
+                click_targets.append({'spid': card.tb_shape.shape_id})
+            for extra in card.extra_shapes:
+                click_targets.append({'spid': extra.shape_id})
+            steps.append(click_targets)
+    else:
+        for card in cards:
+            if card.is_bullet_card and card.tb_shape:
+                bld_shapes.add(card.tb_shape.shape_id)
+                num_paras = len(card.tb_shape.text_frame.paragraphs)
+                
+                # Step 1: Card container and header paragraph(s) appear on click
+                first_click = [{'spid': card.card_shape.shape_id}]
+                if card.header_paras > 0 and num_paras > 0:
+                    first_click.append({
+                        'spid': card.tb_shape.shape_id,
+                        'p_range': (0, min(card.header_paras - 1, num_paras - 1))
+                    })
+                for extra in card.extra_shapes:
+                    first_click.append({'spid': extra.shape_id})
+                steps.append(first_click)
+                
+                # Subsequent clicks: Each bullet paragraph appears on click
+                for p_idx in range(card.header_paras, num_paras):
+                    steps.append([{
+                        'spid': card.tb_shape.shape_id,
+                        'p_range': (p_idx, p_idx)
+                    }])
+            else:
+                click_targets = [{'spid': card.card_shape.shape_id}]
+                if card.tb_shape:
+                    click_targets.append({'spid': card.tb_shape.shape_id})
+                for extra in card.extra_shapes:
+                    click_targets.append({'spid': extra.shape_id})
+                steps.append(click_targets)
+                
+    timing_element = generate_timing_element(steps, bld_shapes=bld_shapes)
+    slide.element.append(timing_element)
+
+
 # ==============================================================================
 # SLIDE 1: Title Slide
 # ==============================================================================
@@ -134,9 +339,9 @@ s2 = prs.slides.add_slide(blank_slide_layout)
 add_header(s2, "Part I: The Paradigm Shift", "The Wet-Lab Reality & Computational Bottleneck",
            "Everyone in the lab generates high-throughput data; turning it into figures is the real grind.")
 
-add_card(s2, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s2.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s2_left = add_card(s2, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s2_left = s2.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s2_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -164,9 +369,9 @@ for title, desc in bullets_s2_left:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s2, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s2.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s2_right = add_card(s2, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s2_right = s2.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s2_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -194,6 +399,11 @@ for title, desc in bullets_s2_right:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s2, [
+    CardInfo(card_s2_left, tb_s2_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s2_right, tb_s2_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 3: Web Chatbots vs. Antigravity Platform
@@ -202,9 +412,9 @@ s3 = prs.slides.add_slide(blank_slide_layout)
 add_header(s3, "Part I: The Paradigm Shift", "Web Chatbots vs. Autonomous Coding Agents",
            "A fundamental architectural leap from answering questions to achieving goals.")
 
-add_card(s3, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s3.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s3_left = add_card(s3, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s3_left = s3.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s3_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -232,9 +442,9 @@ for title, desc in cb_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s3, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s3.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s3_right = add_card(s3, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s3_right = s3.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s3_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -262,6 +472,11 @@ for title, desc in ag_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s3, [
+    CardInfo(card_s3_left, tb_s3_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s3_right, tb_s3_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 4: The Mental Model: Senior Scientist + Junior Bioinformatician
@@ -274,9 +489,9 @@ card_w = Inches(3.64)
 card_h = Inches(4.8)
 
 # Card 1: Your Role
-add_card(s4, Inches(0.8), Inches(2.0), card_w, card_h)
-tb = s4.shapes.add_textbox(Inches(1.0), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
-tf = tb.text_frame
+card_s4_1 = add_card(s4, Inches(0.8), Inches(2.0), card_w, card_h)
+tb_s4_1 = s4.shapes.add_textbox(Inches(1.0), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
+tf = tb_s4_1.text_frame
 tf.word_wrap = True
 p = tf.paragraphs[0]
 p.text = "1. You (Senior Scientist)"
@@ -298,9 +513,9 @@ for t, d in items1:
     p.space_after = Pt(8)
 
 # Card 2: The Agent's Role
-add_card(s4, Inches(4.84), Inches(2.0), card_w, card_h, bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s4.shapes.add_textbox(Inches(5.04), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
-tf = tb.text_frame
+card_s4_2 = add_card(s4, Inches(4.84), Inches(2.0), card_w, card_h, bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s4_2 = s4.shapes.add_textbox(Inches(5.04), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
+tf = tb_s4_2.text_frame
 tf.word_wrap = True
 p = tf.paragraphs[0]
 p.text = "2. Agent (Junior Bioinformatician)"
@@ -322,9 +537,9 @@ for t, d in items2:
     p.space_after = Pt(8)
 
 # Card 3: The Result
-add_card(s4, Inches(8.88), Inches(2.0), card_w, card_h)
-tb = s4.shapes.add_textbox(Inches(9.08), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
-tf = tb.text_frame
+card_s4_3 = add_card(s4, Inches(8.88), Inches(2.0), card_w, card_h)
+tb_s4_3 = s4.shapes.add_textbox(Inches(9.08), Inches(2.2), card_w - Inches(0.4), card_h - Inches(0.4))
+tf = tb_s4_3.text_frame
 tf.word_wrap = True
 p = tf.paragraphs[0]
 p.text = "3. The Scientific Result"
@@ -345,6 +560,12 @@ for t, d in items3:
     p.font.color.rgb = COLOR_TEXT_SECONDARY
     p.space_after = Pt(8)
 
+apply_card_animations(s4, [
+    CardInfo(card_s4_1, tb_s4_1),
+    CardInfo(card_s4_2, tb_s4_2),
+    CardInfo(card_s4_3, tb_s4_3)
+])
+
 
 # ==============================================================================
 # SLIDE 5: Project 1: The Paper Reproducer
@@ -353,9 +574,9 @@ s5 = prs.slides.add_slide(blank_slide_layout)
 add_header(s5, "Part II: What Did I Do With AGY?", "Project 1: The Autonomous Paper Reproducer",
            "Taking a genomics paper (PDF or URL) and autonomously generating a pipeline to reproduce its findings.")
 
-add_card(s5, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s5.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s5_left = add_card(s5, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s5_left = s5.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s5_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -385,9 +606,9 @@ for title, desc in repro_steps:
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
 # Right Card: Placeholder for Branching Pathway & Figure
-add_card(s5, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s5.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s5_right = add_card(s5, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s5_right = s5.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s5_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -398,9 +619,9 @@ p.font.color.rgb = COLOR_ACCENT
 p.space_after = Pt(14)
 
 # Placeholder box
-add_card(s5, Inches(7.2), Inches(3.0), Inches(5.0), Inches(3.4), bg_color=RGBColor(255, 255, 255), border_color=COLOR_ACCENT)
-tb_ph = s5.shapes.add_textbox(Inches(7.4), Inches(3.3), Inches(4.6), Inches(2.8))
-tf_ph = tb_ph.text_frame
+card_s5_ph = add_card(s5, Inches(7.2), Inches(3.0), Inches(5.0), Inches(3.4), bg_color=RGBColor(255, 255, 255), border_color=COLOR_ACCENT)
+tb_s5_ph = s5.shapes.add_textbox(Inches(7.4), Inches(3.3), Inches(4.6), Inches(2.8))
+tf_ph = tb_s5_ph.text_frame
 tf_ph.word_wrap = True
 p = tf_ph.paragraphs[0]
 p.text = "[IMAGE PLACEHOLDER: Branching Pipeline & Output Figure]"
@@ -414,14 +635,19 @@ p.text = "• Flowchart of the branching execution pathway inferred by AGY.\n•
 p.font.size = Pt(11)
 p.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s5, [
+    CardInfo(card_s5_left, tb_s5_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s5_right, tb_s5_right, header_paras=1, is_bullet_card=False, extra_shapes=[card_s5_ph, tb_s5_ph])
+])
+
 
 # ==============================================================================
 # SLIDE 6: LIVE DEMO BREAK: Paper Reproducer
 # ==============================================================================
 s6 = prs.slides.add_slide(blank_slide_layout)
-add_card(s6, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9), bg_color=COLOR_ALERT_BG, border_color=COLOR_ALERT_BORDER)
-tb = s6.shapes.add_textbox(Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
-tf = tb.text_frame
+card_s6 = add_card(s6, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9), bg_color=COLOR_ALERT_BG, border_color=COLOR_ALERT_BORDER)
+tb_s6 = s6.shapes.add_textbox(Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
+tf = tb_s6.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -462,6 +688,10 @@ for t, d in demo1_items:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s6, [
+    CardInfo(card_s6, tb_s6, header_paras=3, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 7: Project 2: The Petite Paper Figure Generator
@@ -470,9 +700,9 @@ s7 = prs.slides.add_slide(blank_slide_layout)
 add_header(s7, "Part II: What Did I Do With AGY?", "Project 2: The Petite Paper Figure Generator",
            "Rescuing years of Candida data dispersed across 5 bloated Jupyter notebooks.")
 
-add_card(s7, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s7.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s7_left = add_card(s7, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s7_left = s7.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s7_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -500,9 +730,9 @@ for t, d in chaos_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s7, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s7.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s7_right = add_card(s7, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s7_right = s7.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s7_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -530,6 +760,11 @@ for t, d in sol_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s7, [
+    CardInfo(card_s7_left, tb_s7_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s7_right, tb_s7_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 8: The 20-Minute Mystery: Cross-Platform Self-Correction
@@ -538,9 +773,9 @@ s8 = prs.slides.add_slide(blank_slide_layout)
 add_header(s8, "Part II: What Did I Do With AGY?", "The 20-Minute Mystery: Cross-Platform Debugging",
            "A silent failure on Windows that would have taken hours to troubleshoot manually.")
 
-add_card(s8, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s8.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s8_left = add_card(s8, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s8_left = s8.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s8_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -568,9 +803,9 @@ for t, d in bug_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s8, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s8.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s8_right = add_card(s8, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s8_right = s8.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s8_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -598,14 +833,19 @@ for t, d in fix_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s8, [
+    CardInfo(card_s8_left, tb_s8_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s8_right, tb_s8_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 9: LIVE DEMO BREAK: Petite Paper Pipeline
 # ==============================================================================
 s9 = prs.slides.add_slide(blank_slide_layout)
-add_card(s9, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9), bg_color=COLOR_ALERT_BG, border_color=COLOR_ALERT_BORDER)
-tb = s9.shapes.add_textbox(Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
-tf = tb.text_frame
+card_s9 = add_card(s9, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9), bg_color=COLOR_ALERT_BG, border_color=COLOR_ALERT_BORDER)
+tb_s9 = s9.shapes.add_textbox(Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
+tf = tb_s9.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -646,6 +886,10 @@ for t, d in demo2_items:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s9, [
+    CardInfo(card_s9, tb_s9, header_paras=3, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 10: What You Need: Domain Knowledge & Ground Truth
@@ -654,9 +898,9 @@ s10 = prs.slides.add_slide(blank_slide_layout)
 add_header(s10, "Part III: The Scientist in the Loop", "Domain Expertise & Ground Truth: Human in the Loop",
            "AI is an accelerator, not an oracle. Responsibility for scientific validity remains 100% yours.")
 
-add_card(s10, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s10.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s10_left = add_card(s10, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s10_left = s10.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s10_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -684,9 +928,9 @@ for t, d in story_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s10, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s10.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s10_right = add_card(s10, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s10_right = s10.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s10_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -714,6 +958,11 @@ for t, d in honest_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s10, [
+    CardInfo(card_s10_left, tb_s10_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s10_right, tb_s10_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 11: The Golden Rule: Code-First, Text-First Figures
@@ -722,9 +971,9 @@ s11 = prs.slides.add_slide(blank_slide_layout)
 add_header(s11, "Part III: The Scientist in the Loop", "The Golden Rule: Code-First, Text-First Figures",
            "Never ask AI or humans to manually edit publication figures in Photoshop or Illustrator.")
 
-add_card(s11, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s11.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s11_left = add_card(s11, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s11_left = s11.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s11_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -752,9 +1001,9 @@ for t, d in manual_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s11, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s11.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s11_right = add_card(s11, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s11_right = s11.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s11_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -782,6 +1031,11 @@ for t, d in code_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s11, [
+    CardInfo(card_s11_left, tb_s11_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s11_right, tb_s11_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 12: Context Windows & Token Hygiene (with Visualizer Link)
@@ -790,9 +1044,9 @@ s12 = prs.slides.add_slide(blank_slide_layout)
 add_header(s12, "Part IV: Best Practices & Toolkit", "Context Windows & Token Hygiene: Working Memory",
            "An agent's working memory is finite. Good token hygiene makes or breaks your results.")
 
-add_card(s12, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s12.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s12_left = add_card(s12, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s12_left = s12.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s12_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -820,9 +1074,9 @@ for t, d in ctx_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s12, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s12.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s12_right = add_card(s12, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s12_right = s12.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s12_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -857,6 +1111,11 @@ for t, d in vis_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s12, [
+    CardInfo(card_s12_left, tb_s12_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s12_right, tb_s12_right, header_paras=2, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 13: Institutional Memory: AGENTS.md
@@ -865,9 +1124,9 @@ s13 = prs.slides.add_slide(blank_slide_layout)
 add_header(s13, "Part IV: Best Practices & Toolkit", "Institutional Memory: AGENTS.md",
            "Teach your agent once; benefit across every future conversation in the project.")
 
-add_card(s13, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s13.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s13_left = add_card(s13, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s13_left = s13.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s13_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -896,9 +1155,9 @@ for t, d in md_points:
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
 # Right Box: Sample AGENTS.md
-add_card(s13, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_CODE_BG)
-tb = s13.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s13_right = add_card(s13, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_CODE_BG)
+tb_s13_right = s13.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s13_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -928,6 +1187,11 @@ p.font.name = "Courier New"
 p.font.size = Pt(10)
 p.font.color.rgb = COLOR_TEXT_PRIMARY
 
+apply_card_animations(s13, [
+    CardInfo(card_s13_left, tb_s13_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s13_right, tb_s13_right, header_paras=1, is_bullet_card=False)
+])
+
 
 # ==============================================================================
 # SLIDE 14: Power Steering: Slash Commands & Skills
@@ -951,10 +1215,11 @@ commands = [
      COLOR_TEXT_SECONDARY)
 ]
 
+cards_s14 = []
 for i, (cmd, sub, desc, col) in enumerate(commands):
     x = Inches(0.8 + (i % 2) * 6.1)
     y = Inches(2.0 + (i // 2) * 2.5)
-    add_card(s14, x, y, Inches(5.6), Inches(2.2))
+    card = add_card(s14, x, y, Inches(5.6), Inches(2.2))
     tb = s14.shapes.add_textbox(x + Inches(0.25), y + Inches(0.2), Inches(5.1), Inches(1.8))
     tf = tb.text_frame
     tf.word_wrap = True
@@ -974,6 +1239,9 @@ for i, (cmd, sub, desc, col) in enumerate(commands):
     p2.text = desc
     p2.font.size = Pt(11)
     p2.font.color.rgb = COLOR_TEXT_SECONDARY
+    cards_s14.append(CardInfo(card, tb))
+
+apply_card_animations(s14, cards_s14)
 
 
 # ==============================================================================
@@ -983,9 +1251,9 @@ s15 = prs.slides.add_slide(blank_slide_layout)
 add_header(s15, "Part IV: Best Practices & Toolkit", "Safety, Sandboxing & The Git Safety Net",
            "Work fearlessly: Protect raw data, verify execution, and track every line.")
 
-add_card(s15, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s15.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s15_left = add_card(s15, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s15_left = s15.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s15_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1013,9 +1281,9 @@ for t, d in safety_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s15, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s15.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s15_right = add_card(s15, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s15_right = s15.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s15_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1043,6 +1311,11 @@ for t, d in git_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s15, [
+    CardInfo(card_s15_left, tb_s15_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s15_right, tb_s15_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 16: Immediate Opportunities: Revamping Berman Lab Tools
@@ -1051,9 +1324,9 @@ s16 = prs.slides.add_slide(blank_slide_layout)
 add_header(s16, "Part V: The Path Forward", "Immediate Opportunities: Revamping Lab Tools",
            "Un-maintained lab tools can now be revived, modernized, and extended with AGY.")
 
-add_card(s16, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s16.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s16_left = add_card(s16, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s16_left = s16.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s16_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1081,9 +1354,9 @@ for t, d in tools_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s16, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s16.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s16_right = add_card(s16, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s16_right = s16.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s16_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1111,6 +1384,11 @@ for t, d in zeev_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s16, [
+    CardInfo(card_s16_left, tb_s16_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s16_right, tb_s16_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 17: Personal Callouts & Subscriptions
@@ -1119,9 +1397,9 @@ s17 = prs.slides.add_slide(blank_slide_layout)
 add_header(s17, "Part V: The Path Forward", "Personal Callouts & Model Economics",
            "Tailored recommendations for lab members and navigating subscriptions at TAU.")
 
-add_card(s17, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s17.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s17_left = add_card(s17, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s17_left = s17.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s17_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1149,9 +1427,9 @@ for t, d in callouts:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s17, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s17.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s17_right = add_card(s17, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s17_right = s17.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s17_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1179,6 +1457,11 @@ for t, d in sub_points:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
+apply_card_animations(s17, [
+    CardInfo(card_s17_left, tb_s17_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s17_right, tb_s17_right, header_paras=1, is_bullet_card=True)
+])
+
 
 # ==============================================================================
 # SLIDE 18: Summary Checklist & Getting Started This Week
@@ -1187,9 +1470,9 @@ s18 = prs.slides.add_slide(blank_slide_layout)
 add_header(s18, "Part V: The Path Forward", "Getting Started: Low-Hanging Fruit for the Lab",
            "Three simple projects you can test this week to build confidence.")
 
-add_card(s18, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
-tb = s18.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s18_left = add_card(s18, Inches(0.8), Inches(2.0), Inches(5.6), Inches(4.8))
+tb_s18_left = s18.shapes.add_textbox(Inches(1.1), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s18_left.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1216,9 +1499,9 @@ for t, d in starter_projects:
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
 
-add_card(s18, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb = s18.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
-tf = tb.text_frame
+card_s18_right = add_card(s18, Inches(6.9), Inches(2.0), Inches(5.6), Inches(4.8), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb_s18_right = s18.shapes.add_textbox(Inches(7.2), Inches(2.3), Inches(5.0), Inches(4.2))
+tf = tb_s18_right.text_frame
 tf.word_wrap = True
 
 p = tf.paragraphs[0]
@@ -1247,6 +1530,11 @@ for t, d in checklist:
     run.text = d
     run.font.bold = False
     run.font.color.rgb = COLOR_TEXT_SECONDARY
+
+apply_card_animations(s18, [
+    CardInfo(card_s18_left, tb_s18_left, header_paras=1, is_bullet_card=True),
+    CardInfo(card_s18_right, tb_s18_right, header_paras=1, is_bullet_card=True)
+])
 
 
 # ==============================================================================
