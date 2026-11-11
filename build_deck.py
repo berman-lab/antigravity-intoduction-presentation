@@ -10,6 +10,12 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx_animations import CardInfo, apply_card_animations
+from render_assets import render_paper_repro_svg, crop_agy_figure, render_git_tree_schematic
+
+# Ensure intermediate visual assets are up-to-date
+render_paper_repro_svg()
+crop_agy_figure()
+render_git_tree_schematic()
 
 # --- Presentation Setup ---
 prs = Presentation()
@@ -159,6 +165,37 @@ p.font.color.rgb = COLOR_TEXT_MUTED
 
 
 # ==============================================================================
+# SLIDE 2 (NEW): If You Remember One Thing From This Presentation
+# ==============================================================================
+s1b = prs.slides.add_slide(blank_layout)
+add_header(s1b, "Core Takeaway", "If You Remember One Thing From This Presentation",
+           "You can write bespoke software solutions for your scientific domain without knowing how to program.")
+
+c1b_left = add_card(s1b, Inches(0.8), Inches(1.95), Inches(5.6), Inches(4.9))
+tb1b_left = s1b.shapes.add_textbox(Inches(1.1), Inches(2.2), Inches(5.0), Inches(4.4))
+add_bullet_list(tb1b_left.text_frame, "The 3 Ingredients for Domain Software", [
+    ("1. You're a Domain Expert:", "You understand the biology, experimental assays, controls, and scientific questions that matter."),
+    ("2. A Little Technical Ability:", "You have basic comfort navigating files, running tools, and thinking logically about data workflows."),
+    ("3. Time to Learn & Play Around:", "You take the time to experiment interactively with agentic tools and learn how to steer them."),
+    ("The Core Formula:", "With these three ingredients, you can write software solutions for your domain without knowing how to program.")
+], title_color=COLOR_TEXT_PRIMARY, bullet_pt=12, space_after=8)
+
+c1b_right = add_card(s1b, Inches(6.9), Inches(1.95), Inches(5.6), Inches(4.9), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb1b_right = s1b.shapes.add_textbox(Inches(7.2), Inches(2.2), Inches(5.0), Inches(4.4))
+add_bullet_list(tb1b_right.text_frame, "Why This Is a Game Changer for Our Lab", [
+    ("Programming Language Optional:", "For us, learning a programming language from scratch may no longer be mandatory."),
+    ("Bespoke Wet-Lab Solutions:", "Wet-lab researchers can create custom analysis and visualization solutions by themselves."),
+    ("Tools Are Improving Fast:", "As these AI coding platforms continue getting better fast, this is a true game changer."),
+    ("Accelerate & Unlock Science:", "Dramatically accelerates your current work and unlocks possibilities that were previously unavailable.")
+], title_color=COLOR_ACCENT, bullet_pt=12, space_after=8)
+
+apply_card_animations(s1b, [
+    CardInfo(c1b_left, tb1b_left, header_paras=1, is_bullet_card=True),
+    CardInfo(c1b_right, tb1b_right, header_paras=1, is_bullet_card=True)
+])
+
+
+# ==============================================================================
 # SLIDE 2: The Wet-Lab Reality & The Programming Bottleneck
 # ==============================================================================
 s2 = prs.slides.add_slide(blank_layout)
@@ -294,7 +331,7 @@ apply_card_animations(s5, [
 # ==============================================================================
 s6 = prs.slides.add_slide(blank_layout)
 add_header(s6, "Part II: What Did I Do With AGY?", "Case Study 1: The Branching Pipeline Architecture",
-           "How Antigravity mapped the paper's computational dependency graph and produced preliminary figures.")
+           "How Antigravity inferred the paper's branching computational dependency graph and produced preliminary figures.")
 
 c6_left = add_card(s6, Inches(0.8), Inches(1.95), Inches(5.6), Inches(4.9))
 tb6_left = s6.shapes.add_textbox(Inches(1.1), Inches(2.2), Inches(5.0), Inches(4.4))
@@ -302,132 +339,86 @@ add_bullet_list(tb6_left.text_frame, "Pipeline Architecture & Execution DAG", [
     ("Stage 1: Toolchain Discovery:", "Parsed PDF methods, extracted exact versions, and built a custom conda environment."),
     ("Stage 2: Legacy Source Patching:", "Modified obsolete C/C++ compiler flags and headers to build cleanly on modern ARM/POSIX systems."),
     ("Stage 3: Parallel Data Streaming:", "Queried ENA mirrors with aria2c to stream raw sequencing fastqs at maximum throughput."),
-    ("Stage 4: Branching Alignment:", "Chained Trimmomatic -> STAR/Bowtie2 -> featureCounts without human shell scripts."),
-    ("Stage 5: Differential Expression:", "Calculated log2 fold-changes and generated preliminary validation figures.")
+    ("Stage 4: Inferred Branching DAG:", "Split trimmed reads into two parallel branches: Reference-Guided De Novo Pan-Genome vs. GATK SNP Phylogeny."),
+    ("Stage 5: Pan-GWAS Convergence:", "Merged gene presence/absence and core phylogeny into Scoary to identify resistance-associated loci.")
 ], title_color=COLOR_TEXT_PRIMARY, bullet_pt=12, space_after=6)
 
-# Right Card: Visual Flowchart Illustration
+# Right Card: paper-repro-flow.svg rendered diagram
 c6_right = add_card(s6, Inches(6.9), Inches(1.95), Inches(5.6), Inches(4.9), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
-tb6_right = s6.shapes.add_textbox(Inches(7.2), Inches(2.15), Inches(5.0), Inches(0.6))
+tb6_right = s6.shapes.add_textbox(Inches(7.1), Inches(2.05), Inches(5.2), Inches(0.42))
 tf6_r = tb6_right.text_frame
 tf6_r.word_wrap = True
 p = tf6_r.paragraphs[0]
-p.text = "Autonomous Pipeline Execution Flowchart"
+p.text = "Inferred Branching Pipeline (paper-repro-flow.svg)"
 p.font.name = FONT_FAMILY
 p.font.bold = True
-p.font.size = Pt(16)
+p.font.size = Pt(15)
 p.font.color.rgb = COLOR_ACCENT
 
-flow_steps = [
-    ("Input: Genomics Paper (PDF / URL)", "Extracts tool versions, datasets, accession IDs", COLOR_TEXT_PRIMARY, COLOR_CARD_BG, COLOR_CARD_BORDER),
-    ("Environment Setup & Tool Patching", "Patches legacy C/C++ source code for modern OS", COLOR_TEXT_PRIMARY, COLOR_CARD_BG, COLOR_CARD_BORDER),
-    ("Parallel Data Ingestion (SRA / ENA)", "High-speed multi-threaded raw FASTQ streaming", COLOR_TEXT_PRIMARY, COLOR_CARD_BG, COLOR_CARD_BORDER),
-    ("Branching Analysis DAG (QC -> Alignment)", "Trimmomatic -> STAR / Bowtie2 -> featureCounts", COLOR_TEXT_PRIMARY, COLOR_CARD_BG, COLOR_CARD_BORDER),
-    ("Figure Reproduction & Comparison", "Generates publication plots matching original paper", COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_SUCCESS)
-]
-
-extra_shapes_s6 = []
-step_y = Inches(2.7)
-box_h = Inches(0.62)
-box_w = Inches(5.0)
-
-for idx, (title_text, sub_text, text_col, fill_col, border_col) in enumerate(flow_steps):
-    step_shape = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7.2), step_y, box_w, box_h)
-    step_shape.fill.solid()
-    step_shape.fill.fore_color.rgb = fill_col
-    step_shape.line.color.rgb = border_col
-    step_shape.line.width = Pt(1)
-
-    tf_s = step_shape.text_frame
-    tf_s.word_wrap = True
-    tf_s.margin_left = tf_s.margin_right = Inches(0.15)
-    tf_s.margin_top = Inches(0.06)
-    tf_s.margin_bottom = 0
-
-    p1 = tf_s.paragraphs[0]
-    p1.text = f"{idx + 1}. {title_text}"
-    p1.font.name = FONT_FAMILY
-    p1.font.bold = True
-    p1.font.size = Pt(11)
-    p1.font.color.rgb = text_col
-
-    p2 = tf_s.add_paragraph()
-    p2.text = sub_text
-    p2.font.name = FONT_FAMILY
-    p2.font.size = Pt(9.5)
-    p2.font.color.rgb = COLOR_TEXT_SECONDARY
-
-    extra_shapes_s6.append(step_shape)
-
-    if idx < len(flow_steps) - 1:
-        arrow = s6.shapes.add_shape(MSO_SHAPE.DOWN_ARROW, Inches(9.55), step_y + box_h + Inches(0.02), Inches(0.3), Inches(0.16))
-        arrow.fill.solid()
-        arrow.fill.fore_color.rgb = COLOR_ACCENT
-        arrow.line.fill.background()
-        extra_shapes_s6.append(arrow)
-
-    step_y += Inches(0.82)
+# Insert paper-repro-flow.png (exact high-res render of paper-repro-flow.svg, aspect ratio 0.7597)
+pic6_h = Inches(4.25)
+pic6_w = Inches(4.25 * (982.08 / 1292.6))
+pic6_left = Inches(6.9 + (5.6 - 4.25 * (982.08 / 1292.6)) / 2)
+pic6_flow = s6.shapes.add_picture("paper-repro-flow.png", pic6_left, Inches(2.48), width=pic6_w, height=pic6_h)
 
 apply_card_animations(s6, [
     CardInfo(c6_left, tb6_left, header_paras=1, is_bullet_card=True),
-    CardInfo(c6_right, tb6_right, header_paras=1, is_bullet_card=False, extra_shapes=extra_shapes_s6)
+    CardInfo(c6_right, tb6_right, header_paras=1, is_bullet_card=False, extra_shapes=[pic6_flow])
 ])
 
 
 # ==============================================================================
-# SLIDE 7: LIVE DEMO BREAK: The Autonomous Paper Reproducer
+# SLIDE 7: Case Study 2: Pipeline Figures vs. Published Paper
 # ==============================================================================
 s7 = prs.slides.add_slide(blank_layout)
-c7 = add_card(s7, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9), bg_color=COLOR_ALERT_BG, border_color=COLOR_ALERT_BORDER)
-tb7 = s7.shapes.add_textbox(Inches(1.2), Inches(1.2), Inches(10.9), Inches(5.1))
-tf7 = tb7.text_frame
-tf7.word_wrap = True
+add_header(s7, "Part II: What Did I Do With AGY?", "Case Study 2: Pipeline Figures vs. Published Paper",
+           "Side-by-side comparison of the original published figure (Barber et al., 2021) and the AGY pipeline's reproduction.")
 
-p = tf7.paragraphs[0]
-p.text = "LIVE DEMONSTRATION 1"
-p.font.name = FONT_FAMILY
-p.font.bold = True
-p.font.size = Pt(14)
-p.font.color.rgb = COLOR_ALERT_BORDER
-p.space_after = Pt(8)
+c7_left = add_card(s7, Inches(0.8), Inches(1.95), Inches(5.6), Inches(4.9), bg_color=RGBColor(255, 255, 255), border_color=COLOR_CARD_BORDER)
+tb7_left = s7.shapes.add_textbox(Inches(1.0), Inches(2.08), Inches(5.2), Inches(0.55))
+tf7_l = tb7_left.text_frame
+tf7_l.word_wrap = True
+p7_l1 = tf7_l.paragraphs[0]
+p7_l1.text = "Published Paper: Barber et al. (2021) Figure 1"
+p7_l1.font.name = FONT_FAMILY
+p7_l1.font.bold = True
+p7_l1.font.size = Pt(15)
+p7_l1.font.color.rgb = COLOR_TEXT_PRIMARY
+p7_l2 = tf7_l.add_paragraph()
+p7_l2.text = "Original pan-genome matrix, rarefaction curves, and gene length comparisons"
+p7_l2.font.name = FONT_FAMILY
+p7_l2.font.size = Pt(11)
+p7_l2.font.color.rgb = COLOR_TEXT_SECONDARY
 
-p = tf7.add_paragraph()
-p.text = "LIVE DEMO: The Autonomous Paper Reproducer"
-p.font.name = FONT_FAMILY
-p.font.bold = True
-p.font.size = Pt(32)
-p.font.color.rgb = COLOR_TEXT_PRIMARY
-p.space_after = Pt(14)
+# Paper figure_1.png (1200x688, aspect ratio 1.744)
+pic7_l_w = Inches(5.3)
+pic7_l_h = Inches(5.3 * (688 / 1200))
+pic7_paper = s7.shapes.add_picture("figure_1_paper.png", Inches(0.95), Inches(3.15), width=pic7_l_w, height=pic7_l_h)
 
-p = tf7.add_paragraph()
-p.text = "Walking through the genomics reproduction workspace, pipeline DAG, and preliminary figures."
-p.font.name = FONT_FAMILY
-p.font.size = Pt(16)
-p.font.color.rgb = COLOR_TEXT_SECONDARY
-p.space_after = Pt(26)
+c7_right = add_card(s7, Inches(6.9), Inches(1.95), Inches(5.6), Inches(4.9), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
+tb7_right = s7.shapes.add_textbox(Inches(7.1), Inches(2.08), Inches(5.2), Inches(0.55))
+tf7_r = tb7_right.text_frame
+tf7_r.word_wrap = True
+p7_r1 = tf7_r.paragraphs[0]
+p7_r1.text = "AGY Pipeline Output (Figure_1_pangenome_analysis-AGY.png)"
+p7_r1.font.name = FONT_FAMILY
+p7_r1.font.bold = True
+p7_r1.font.size = Pt(15)
+p7_r1.font.color.rgb = COLOR_ACCENT
+p7_r2 = tf7_r.add_paragraph()
+p7_r2.text = "Generated autonomously from raw reads with zero manual coding"
+p7_r2.font.name = FONT_FAMILY
+p7_r2.font.size = Pt(11)
+p7_r2.font.color.rgb = COLOR_TEXT_SECONDARY
 
-demo1_items = [
-    ("The Paper Directive:", "Showing how AGY parsed the paper PDF and identified requisite toolchains."),
-    ("Legacy Code Patching:", "Inspecting source code patches applied by the agent to get legacy bioinformatic tools compiling."),
-    ("Branching Execution Graph:", "Viewing the pipeline dependency graph connecting raw FASTQ reads to final alignments."),
-    ("Figure Output:", "Displaying the preliminary reproduced figure generated without manual coding.")
-]
-for t, d in demo1_items:
-    p = tf7.add_paragraph()
-    p.text = f"• {t} "
-    p.font.name = FONT_FAMILY
-    p.font.bold = True
-    p.font.size = Pt(14)
-    p.font.color.rgb = COLOR_TEXT_PRIMARY
-    p.space_after = Pt(10)
-    run = p.add_run()
-    run.text = d
-    run.font.name = FONT_FAMILY
-    run.font.bold = False
-    run.font.color.rgb = COLOR_TEXT_SECONDARY
+# AGY cropped figure (4520x3114, aspect ratio 1.4515)
+pic7_r_w = Inches(5.3)
+pic7_r_h = Inches(5.3 * (3114 / 4520))
+pic7_agy = s7.shapes.add_picture("Figure_1_pangenome_analysis-AGY_cropped.png", Inches(7.05), Inches(2.90), width=pic7_r_w, height=pic7_r_h)
 
 apply_card_animations(s7, [
-    CardInfo(c7, tb7, header_paras=3, is_bullet_card=True)
+    CardInfo(c7_left, tb7_left, header_paras=2, is_bullet_card=False, extra_shapes=[pic7_paper]),
+    CardInfo(c7_right, tb7_right, header_paras=2, is_bullet_card=False, extra_shapes=[pic7_agy])
 ])
 
 
@@ -1062,9 +1053,9 @@ add_bullet_list(tb25_left.text_frame, "Why Version Control is Essential", [
     ("Reviewer-Proof Provenance:", "Every figure is permanently tied to an exact Git commit hash, ensuring 100% reproducible results for publication.")
 ], title_color=COLOR_TEXT_PRIMARY, bullet_pt=12, space_after=8)
 
-# Right Card: Visual Git Tree Schematic for Newcomers
+# Right Card: Visual Git Tree Schematic for Newcomers (High-res rendered figure)
 c25_right = add_card(s25, Inches(6.9), Inches(1.95), Inches(5.6), Inches(4.9))
-tb25_right = s25.shapes.add_textbox(Inches(7.1), Inches(2.1), Inches(5.2), Inches(0.65))
+tb25_right = s25.shapes.add_textbox(Inches(7.1), Inches(2.06), Inches(5.2), Inches(0.55))
 tf25_r = tb25_right.text_frame
 tf25_r.word_wrap = True
 p = tf25_r.paragraphs[0]
@@ -1075,141 +1066,20 @@ p.font.size = Pt(16)
 p.font.color.rgb = COLOR_SUCCESS
 
 p2 = tf25_r.add_paragraph()
-p2.text = "A visual mental model of commits, branches, and merges"
+p2.text = "A visual mental model of commits, branches, merges, and rollbacks"
 p2.font.name = FONT_FAMILY
 p2.font.size = Pt(11)
 p2.font.color.rgb = COLOR_TEXT_SECONDARY
 
-extra_shapes_s25 = []
-
-# Main branch line (horizontal connecting bar)
-main_line = s25.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(8.0), Inches(3.14), Inches(3.8), Inches(0.04))
-main_line.fill.solid()
-main_line.fill.fore_color.rgb = COLOR_ACCENT
-main_line.line.fill.background()
-extra_shapes_s25.append(main_line)
-
-# Feature branch line (horizontal connecting bar)
-feat_line = s25.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(9.8), Inches(4.14), Inches(1.2), Inches(0.04))
-feat_line.fill.solid()
-feat_line.fill.fore_color.rgb = COLOR_SUCCESS
-feat_line.line.fill.background()
-extra_shapes_s25.append(feat_line)
-
-# Branch down connector (diagonal branch out)
-branch_out = s25.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(9.1), Inches(3.3), Inches(0.4), Inches(0.8))
-branch_out.fill.solid()
-branch_out.fill.fore_color.rgb = COLOR_SUCCESS_BG
-branch_out.line.color.rgb = COLOR_SUCCESS
-branch_out.line.width = Pt(1)
-extra_shapes_s25.append(branch_out)
-
-# Branch up connector (merge back into main)
-merge_in = s25.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(11.1), Inches(3.3), Inches(0.4), Inches(0.8))
-merge_in.fill.solid()
-merge_in.fill.fore_color.rgb = COLOR_PURPLE_BG
-merge_in.line.color.rgb = COLOR_PURPLE
-merge_in.line.width = Pt(1)
-extra_shapes_s25.append(merge_in)
-
-# Branch label pills
-pill_main = s25.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7.15), Inches(2.98), Inches(0.8), Inches(0.35))
-pill_main.fill.solid()
-pill_main.fill.fore_color.rgb = COLOR_ACCENT
-pill_main.line.fill.background()
-pill_main.text_frame.margin_left = Inches(0.05)
-p_pm = pill_main.text_frame.paragraphs[0]
-p_pm.text = "main"
-p_pm.font.name = FONT_FAMILY
-p_pm.font.bold = True
-p_pm.font.size = Pt(10)
-p_pm.font.color.rgb = RGBColor(255, 255, 255)
-extra_shapes_s25.append(pill_main)
-
-pill_feat = s25.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7.15), Inches(3.98), Inches(1.5), Inches(0.35))
-pill_feat.fill.solid()
-pill_feat.fill.fore_color.rgb = COLOR_SUCCESS
-pill_feat.line.fill.background()
-pill_feat.text_frame.margin_left = Inches(0.05)
-p_pf = pill_feat.text_frame.paragraphs[0]
-p_pf.text = "feature/palette"
-p_pf.font.name = FONT_FAMILY
-p_pf.font.bold = True
-p_pf.font.size = Pt(9.5)
-p_pf.font.color.rgb = RGBColor(255, 255, 255)
-extra_shapes_s25.append(pill_feat)
-
-# Commit Nodes (Circles)
-commits_data = [
-    # (x, y, label, sublabel, color, text_above)
-    (8.15, 2.98, "C1", "C1: Setup", COLOR_ACCENT, True),
-    (9.05, 2.98, "C2", "C2: Baseline", COLOR_ACCENT, True),
-    (10.1, 2.98, "C3", "C3: Plot v1", COLOR_ACCENT, True),
-    (11.55, 2.98, "C6", "C6: Merged", COLOR_PURPLE, True),
-    (9.65, 3.98, "C4", "C4: New Colors", COLOR_SUCCESS, False),
-    (10.75, 3.98, "C5", "C5: Polish", COLOR_SUCCESS, False)
-]
-
-for cx, cy, node_txt, sub_txt, col, above in commits_data:
-    node = s25.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx), Inches(cy), Inches(0.36), Inches(0.36))
-    node.fill.solid()
-    node.fill.fore_color.rgb = col
-    node.line.fill.background()
-    p_n = node.text_frame.paragraphs[0]
-    p_n.text = node_txt
-    p_n.font.name = FONT_FAMILY
-    p_n.font.bold = True
-    p_n.font.size = Pt(9)
-    p_n.font.color.rgb = RGBColor(255, 255, 255)
-    extra_shapes_s25.append(node)
-
-    # Label box
-    lbl_y = Inches(cy - 0.28) if above else Inches(cy + 0.38)
-    lbl_box = s25.shapes.add_textbox(Inches(cx - 0.3), lbl_y, Inches(1.0), Inches(0.28))
-    tf_lbl = lbl_box.text_frame
-    tf_lbl.margin_left = tf_lbl.margin_right = tf_lbl.margin_top = tf_lbl.margin_bottom = 0
-    p_lbl = tf_lbl.paragraphs[0]
-    p_lbl.text = sub_txt
-    p_lbl.font.name = FONT_FAMILY
-    p_lbl.font.size = Pt(8.5)
-    p_lbl.font.color.rgb = COLOR_TEXT_MUTED
-    extra_shapes_s25.append(lbl_box)
-
-# Bottom Legend Card explaining concepts for newcomers
-leg_card = s25.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7.1), Inches(4.85), Inches(5.2), Inches(1.8))
-leg_card.fill.solid()
-leg_card.fill.fore_color.rgb = RGBColor(255, 255, 255)
-leg_card.line.color.rgb = COLOR_CARD_BORDER
-leg_card.line.width = Pt(1)
-tf_leg = leg_card.text_frame
-tf_leg.word_wrap = True
-tf_leg.margin_left = tf_leg.margin_right = tf_leg.margin_top = Inches(0.12)
-tf_leg.margin_bottom = 0
-
-legend_items = [
-    ("● Commit:", "An immutable checkpoint of all files at that moment. Jump back anytime."),
-    ("↗ Branch:", "A safe sandbox to test new code or palettes without risking working scripts."),
-    ("↘ Merge:", "Safely incorporates tested, verified changes back into the production pipeline."),
-    ("↺ Revert:", "If an agent experiment fails, discard the branch and roll back with zero risk.")
-]
-for idx, (term, desc) in enumerate(legend_items):
-    p_l = tf_leg.paragraphs[0] if idx == 0 else tf_leg.add_paragraph()
-    p_l.text = f"{term} "
-    p_l.font.name = FONT_FAMILY
-    p_l.font.size = Pt(9.5)
-    p_l.font.bold = True
-    p_l.font.color.rgb = COLOR_TEXT_PRIMARY
-    p_l.space_after = Pt(2.5)
-    r_l = p_l.add_run()
-    r_l.text = desc
-    r_l.font.name = FONT_FAMILY
-    r_l.font.bold = False
-    r_l.font.color.rgb = COLOR_TEXT_SECONDARY
-extra_shapes_s25.append(leg_card)
+# Insert git_tree_schematic.png (1560x1200, aspect ratio 1.30)
+pic25_w = Inches(5.33)
+pic25_h = Inches(5.33 * (1200 / 1560))
+pic25_left = Inches(6.9 + (5.6 - 5.33) / 2)
+pic25_git = s25.shapes.add_picture("git_tree_schematic.png", pic25_left, Inches(2.64), width=pic25_w, height=pic25_h)
 
 apply_card_animations(s25, [
     CardInfo(c25_left, tb25_left, header_paras=1, is_bullet_card=True),
-    CardInfo(c25_right, tb25_right, header_paras=1, is_bullet_card=False, extra_shapes=extra_shapes_s25)
+    CardInfo(c25_right, tb25_right, header_paras=2, is_bullet_card=False, extra_shapes=[pic25_git])
 ])
 
 
@@ -1312,4 +1182,4 @@ apply_card_animations(s28, [
 # ==============================================================================
 output_path = "antigravity_lab_presentation.pptx"
 prs.save(output_path)
-print(f"Presentation successfully saved to {output_path} (28 slides, 16:9 widescreen).")
+print(f"Presentation successfully saved to {output_path} ({len(prs.slides)} slides, 16:9 widescreen).")

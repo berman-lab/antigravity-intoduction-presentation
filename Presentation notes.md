@@ -1,8 +1,10 @@
 # Introduction - audience, scope and goals
 
-This presentation is for my former biology lab mates. We study drug resistance in Candida, mostly Candida albicans (although my area of research was Candida glabrata). Most lab members are non-technical, and only some have any formal programming training, while some picked it up along the way. Folks generate a lot of data - growth curves, disk diffusion assays, spot assays, colony growth assays are routine. More fancy data includes whole-genome sequencing and proteomics. We have to analyze and visualize this data by ourselves, for presentations and for publication, and there is no 'one shoe fits all' approach - everyone has different needs and ideas. Access to technical people like myself is limited, and in any case not practical for day-to-day tasks. Thus, most if not all people in the lab work with web chatbots (like ChatGPT or Claude.ai) to generate code that analyzes the data in R or Python. This can create many problems and 'technical debt' if you're not careful, but mostly it's just slow to write and slow to manage.
+This presentation is for my former biology lab mates. We study drug resistance in Candida, mostly Candida albicans (although my area of research was Candida glabrata). Most lab members are non-technical, and only some have any formal programming training, while some picked it up along the way. Folks generate a lot of data - growth curves, disk diffusion assays, spot assays, colony growth assays are routine. More fancy data includes whole-genome sequencing and proteomics. The complexity, variety and sheer volume of data only keeps increasing. We have to analyze and visualize this data by ourselves, for presentations and for publication, and there is no 'one shoe fits all' approach - everyone has different needs and ideas. Access to technical people like myself is limited, and in any case not practical for day-to-day tasks. Thus, most if not all people in the lab work with web chatbots (like ChatGPT or Claude.ai) to generate code that analyzes the data in R or Python. This can create many problems and 'technical debt' if you're not careful, but mostly it's just slow to write and slow to manage.
 
-In recent weeks I've been experimenting with Antigravity, and it has really blown my mind. First, for color commentary - all of my friends from industry (programmers, bioinformaticians, cyber specialists and data analysts) - none have written actual code manually in almost a year now. And now I know why - tools like AGY allow you to develop your project interactively, in human language, with very fast feedback. Gemini itself has put it quite well:
+In recent weeks I've been experimenting with Antigravity, and it has really blown my mind. First, for color commentary - all of my friends from industry (programmers, bioinformaticians, cyber specialists and data analysts) - none have written actual code manually in almost a year now. And now I know why - tools like AGY allow you to develop your project interactively, in human language, with very fast feedback. If there is one thing I want you to remember from this presentation, it is this: if (1) you're a domain expert, and (2) have a little technical ability, and (3) have time to learn and play around with the tools, then you can write software solutions for your domain without knowing how to program. For us this means that learning a programming language may no longer be mandatory; and wet-lab researchers can create bespoke analysis and visualization solutions by themselves. As these tools are only getting better fast - this is a game changer. It can dramatically accelerate your current work, and unlock many possiblities that were previously unavailable.
+
+Gemini itself has put it quite well:
 
 Chatbots (Local or Web UI)
 • Disconnected from files: Cannot see your workspace, raw data files, or existing scripts.
@@ -45,7 +47,7 @@ I now have a single point of execution - one script that can generate all or som
 
 [Showcase all of these things!]
 
-Final fun fact - when I shared this project with Anastasia, who works on Windows, it didn't work (I'm running it on macOS). The failure was completely silent - no warning, no error, no crash report. I was completley flabbergasted. AGY solved it all by itself, realizing that this was a silent crash within matplotlib that could be fixed by setting an envrionmental variable. This would've taken me hours to solve at the very least - AGY did it in 20 minutes.
+Final fun fact - when I shared this project with Anastasia, who works on Windows, it didn't work (I'm running it on macOS). The failure was completely silent - no warning, no error, no crash report. I was completley flabbergasted. I did find the line that crashed - a call to a matplotlib plotting function, which I then passed on to AGY. It solved it all by itself, realizing the crash was unique to Windows, came from within matplotlib and could be fixed by setting an envrionmental variable. This would've taken me hours to solve at the very least - AGY did it in 15 minutes, autonomously.
 
 <!-- ## Project 3: this very presentation! -->
 
@@ -67,9 +69,9 @@ First, you create a project, that is associated with a folder. Everything within
 
 1. Each conversation starts completely fresh, without any memory. It can scan the folder and files within, but that takes tokens. However, you can 'seed' it with instructions via AGENTS.md (we'll talk about it soon), and you can point to important files and even other conversations with the '@' command.
 2. Each conversation carries a context - everything that was said in the conversation prior. The context is finite, and once it fills up, the conversations are 'compacted' (summarized) and the previous context is discarded, so that the conversation can go on. Try not to get to that point, as performance degrades. Having many short conversations (each conversation about a particular feature, panel, or bug fix) is better than having one long one. Remember: for LLMs, only the context exists. Whatever isn't in it, doesn't exist. [Have a context visualizer here.]
-3. Better models are more expensive (that is, they burn tokens faster). You can make AGY switch between models, so you can, for example, use a cheaper model for simple tasks like finding files, and a better model for complex tasks like debugging. You can also switch between thinking levels - from 'deep thinking' (slower, more expensive) to 'shallow thinking' (faster, cheaper).
+3. Better models generally have larger context windows, but are more expensive (that is, they burn tokens faster). You can make AGY switch between models - use a cheaper model for simple tasks like finding files, and a better model for complex tasks like debugging. You can also switch between thinking levels - from 'deep thinking' (slower, more expensive) to 'shallow thinking' (faster, cheaper).
 4. You can even ask Gemini (or another chatbot) to engineer the prompt and choose a model. It can also give you tips, for example, which slash commands to use (see below).
-5. While running, you can see what the agent is doing - what tools are running, and its thinking process - and you can stop it and correct course if needed.
+5. While running, you can see what the agent is doing - what tools are running, and its thinking process (or at least you could - recently it seems that AGY no longer shows the chain-of-thought) - and you can stop it and correct course if needed.
 
 ## Managing the context
 
@@ -82,7 +84,7 @@ First, you create a project, that is associated with a folder. Everything within
 
 - `/plan` - when starting a big chunk of work (e.g., analyzing a new file format), you can ask AGY to make a plan, which you can then read and edit iteratively, if needed. This gives the agent more precise instructions to follow, and you the peace of mind that it's on the right track.
 - `/grill-me` - this is useful alongside `/plan`, but can be used without it. This instructs the agent to ask you about points it's unsure about before execution.
-- `/learn` - once the agent has completed a task, this instructs it to learn from what it did, and update `AGENTS.md` and other relevant files, perhaps even creating a skill. Can be used without any instructions!
+- `/learn` - once the agent has completed a task, this instructs it to learn from what it did, and update `AGENTS.md` and other relevant files, perhaps even creating a skill. This is especially useful if the agent gets stuck on some loop - a classic case that probaly can be solved by updating `AGENTS.md`.Can be used without any instructions!
 
 ## Skills
 
@@ -98,6 +100,8 @@ One advanced feature of working with git are worktrees, which allow you to run t
 
 This presentation is too short to discuss git, but I can give a separate presentation if you want.
 
+## 
+
 ## Safey and security
 
 - The AI will ask you if it tries to access files outside its local folder. This can even become annoying. Still, you must be careful with running tools - as it CAN modify data on your computer, and modify or delete important files by mistake. This is where tools like git and Dropbox come in handy, as they keep archives. My recommendation is to copy your data files into your local folder, so the local copy is accessible to the AI, and you have an archival copy elsewhere (on Dropbox or the NAS or whatever).
@@ -105,9 +109,11 @@ This presentation is too short to discuss git, but I can give a separate present
 
 # Next steps
 
-- Right now, the lab has a few tools, like OD Normalizer, DDA panel creator, and older and bigger ones, like Scanalyzer and even diskImageR, that nobody really maintains. These can now be maintained and improved by AGY, although it requires a certain amount of setup. My homework for Ze'ev - should he accept it - is to feed the GitHub issues of the DDA panel creator to AGY - I'm sure you can finisih all of them within a week.
+- Ze'ev - your mission, should you choose to accept it, is to feed the GitHub issues of the DDA panel creator to AGY - I'm sure you can finisih all of them within a week.
 - Shani - I see you working with Claude's UI! I recommend playing around with AGY and seeing if you can consolidate your analysis work into a single project, and see how it can benefit you to writing better analyses and visualizations.
 - Sofya - I'm positive AGY can be used for better exploratory analysis of transposon libraries. We still need quality assessments on those libraries, and I don't think we ended up with something final.
 - Alona - I know you already have a Claude subscription; see if you can plug Anthropic's Claude models into AGY (or test Anthropic's CLI agent Claude Code).
+- Judy - I think you can now be much more independent in working with the data, if you're feeling adventurous. More practically, I wonder if it can be useful to extract lessons from your writing course into skills, that can be run on manuscripts to check them against your best practices.
+- In general, mainentance of older tools, like the OD Normalizer, Scanalyzer, diskImageR and even Ymap, is now possible through AGY, and does not require the original author or a professional programmer. That would require some setup, partly depending on the tool in question, but is absolutely doable.
 
 - AGY itself is free, and the Gemini models powering it do have a free tier , but free quotas can run out quickly with heavy use. TAU provides a 550 NIS per year Gemini Pro subscription (though verify whether TAU's license covers developer API quotas or just the Google Workspace web chat interface). By comparison, standard private developer subscriptions or API billing runs around ~75 NIS / month (~900 NIS / year). TAU also offers academic access to OpenAI and Microsoft models (though Microsoft's Copilot is considered inferior for code). You can also plug in Anthropic's Claude models (e.g., Claude 3.5/3.7 Sonnet or Opus) into AGY via API keys. While many consider Anthropic's coding models superior for certain tasks, for my biology pipelines Gemini Pro was completely sufficient and very cost-effective.

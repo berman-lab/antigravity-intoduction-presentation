@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 982.0799999999999 1292.6000000000001" width="982.0799999999999" height="1292.6000000000001" style="--bg:#18181B;--fg:#F4F4F5;--line:#71717A;--muted:#A1A1AA;--surface:#27272A;--border:#3F3F46;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<g class="subgraph" data-id="Branch_1_ReferenceGuided_De_Novo_Assembly__PanGenome" data-label="Branch 1: Reference-Guided De Novo Assembly &amp; Pan-Genome">
+  <rect x="40" y="555.3999999999999" width="457.04699999999997" height="521.4" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="555.3999999999999" width="457.04699999999997" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="52" y="569.3999999999999" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Branch 1: Reference-Guided De Novo Assembly &amp; Pan-Genome</text>
+</g>
+<g class="subgraph" data-id="Branch_2_GATK_Best_Practices__Core_Phylogeny" data-label="Branch 2: GATK Best Practices &amp; Core Phylogeny">
+  <rect x="525.047" y="215.8" width="417.0329999999999" height="860.9999999999999" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="525.047" y="215.8" width="417.0329999999999" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="537.047" y="229.8" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Branch 2: GATK Best Practices &amp; Core Phylogeny</text>
+</g>
+<polyline class="edge" data-from="Raw" data-to="Trimmomatic" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="501.04349999999994,76.9 501.04349999999994,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Scoary" data-to="Hits" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="501.0435,1167.7 501.04349999999994,1215.7" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Trimmomatic" data-to="IDBA" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="501.04349999999994,161.8 501.04349999999994,210.8 268.5235,210.8 268.5235,599.3999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Trimmomatic" data-to="BWA" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="501.04349999999994,161.8 501.04349999999994,210.8 733.5635,210.8 733.5635,259.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PAV" data-to="Scoary" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,1060.8 268.5235,1095.8 501.0435,1095.8 501.0435,1130.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Tree" data-to="Scoary" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,1060.8 733.5635,1095.8 501.0435,1095.8 501.0435,1130.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="IDBA" data-to="QUAST" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,636.2999999999998 268.5235,684.2999999999998" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="QUAST" data-to="RM" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,721.1999999999998 268.5235,769.1999999999998" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RM" data-to="Funannotate" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,806.0999999999999 268.5235,854.0999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Funannotate" data-to="Ortho" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,890.9999999999999 268.5235,938.9999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Ortho" data-to="PAV" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="268.5235,975.8999999999999 268.5235,1023.8999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="BWA" data-to="MarkDup" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,296.70000000000005 733.5635,344.70000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="MarkDup" data-to="BaseRecal" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,381.6 733.5635,429.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="BaseRecal" data-to="ApplyBQSR" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,466.5 733.5635,514.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="ApplyBQSR" data-to="Haplotype" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,551.4000000000001 733.5635,599.4000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Haplotype" data-to="Filter" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,636.3 733.5635,684.3" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Filter" data-to="CoreSNPs" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,721.2 733.5635,769.2" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="CoreSNPs" data-to="IQTREE" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,806.0999999999999 733.5635,854.0999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="IQTREE" data-to="Clonal" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,891 733.5635,939" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="Clonal" data-to="Tree" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="733.5635,975.8999999999999 733.5635,1023.8999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="node" data-id="Raw" data-label="Illumina PE Reads: PRJNA666940" data-shape="rectangle">
+  <rect x="381.145" y="40" width="239.79699999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="501.04349999999994" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Illumina PE Reads: PRJNA666940</text>
+</g>
+<g class="node" data-id="Trimmomatic" data-label="Trimmomatic: Adapter &amp; Quality Trimming" data-shape="rectangle">
+  <rect x="363.7315" y="124.9" width="274.6239999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="501.04349999999994" y="143.35000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Trimmomatic: Adapter &amp; Quality Trimming</text>
+</g>
+<g class="node" data-id="Scoary" data-label="Scoary v1.6.16: Pan-GWAS Clinical vs Environmental" data-shape="rectangle">
+  <rect x="330.016" y="1130.8" width="342.0549999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="501.0435" y="1149.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Scoary v1.6.16: Pan-GWAS Clinical vs Environmental</text>
+</g>
+<g class="node" data-id="Hits" data-label="Infection &amp; Azole Resistance-Associated Loci" data-shape="rectangle">
+  <rect x="348.541" y="1215.7" width="305.0049999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="501.04349999999994" y="1234.15" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Infection &amp; Azole Resistance-Associated Loci</text>
+</g>
+<g class="node" data-id="IDBA" data-label="IDBA-hybrid v1.1.3: Reference-Guided by Af293" data-shape="rectangle">
+  <rect x="114.1685" y="599.3999999999999" width="308.71" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="617.8499999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">IDBA-hybrid v1.1.3: Reference-Guided by Af293</text>
+</g>
+<g class="node" data-id="QUAST" data-label="QUAST: Assembly Quality &amp; Contig Length Filtering" data-shape="rectangle">
+  <rect x="100.83050000000009" y="684.2999999999998" width="335.3859999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="702.7499999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">QUAST: Assembly Quality &amp; Contig Length Filtering</text>
+</g>
+<g class="node" data-id="RM" data-label="RepeatMasker: Fungal Repeat Identification &amp; Soft-Masking" data-shape="rectangle">
+  <rect x="76.37750000000003" y="769.1999999999998" width="384.2919999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="787.6499999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">RepeatMasker: Fungal Repeat Identification &amp; Soft-Masking</text>
+</g>
+<g class="node" data-id="Funannotate" data-label="Funannotate v1.5.2: Augustus + GeneMark-ES + EvidenceModeler" data-shape="rectangle">
+  <rect x="56" y="854.0999999999999" width="425.04699999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="872.55" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Funannotate v1.5.2: Augustus + GeneMark-ES + EvidenceModeler</text>
+</g>
+<g class="node" data-id="Ortho" data-label="OrthoFinder v2.5.2: Proteome Orthogroup Clustering" data-shape="rectangle">
+  <rect x="94.90250000000003" y="938.9999999999999" width="347.2419999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="957.4499999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">OrthoFinder v2.5.2: Proteome Orthogroup Clustering</text>
+</g>
+<g class="node" data-id="PAV" data-label="Gene Presence / Absence Matrix: Core vs Accessory" data-shape="rectangle">
+  <rect x="90.08600000000001" y="1023.8999999999999" width="356.87499999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="268.5235" y="1042.35" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Gene Presence / Absence Matrix: Core vs Accessory</text>
+</g>
+<g class="node" data-id="BWA" data-label="BWA-MEM: Map to Af293 Reference" data-shape="rectangle">
+  <rect x="608.478" y="259.8" width="250.17099999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="278.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">BWA-MEM: Map to Af293 Reference</text>
+</g>
+<g class="node" data-id="MarkDup" data-label="Picard MarkDuplicates: Flag PCR/Optical Duplicates" data-shape="rectangle">
+  <rect x="559.9425" y="344.70000000000005" width="347.2419999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="363.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Picard MarkDuplicates: Flag PCR/Optical Duplicates</text>
+</g>
+<g class="node" data-id="BaseRecal" data-label="GATK BaseRecalibrator: Build BQSR Error Model" data-shape="rectangle">
+  <rect x="567.3525000000001" y="429.6" width="332.42199999999985" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="448.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">GATK BaseRecalibrator: Build BQSR Error Model</text>
+</g>
+<g class="node" data-id="ApplyBQSR" data-label="GATK ApplyBQSR: Recalibrate Base Quality Scores" data-shape="rectangle">
+  <rect x="561.0540000000001" y="514.5" width="345.01899999999983" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="532.95" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">GATK ApplyBQSR: Recalibrate Base Quality Scores</text>
+</g>
+<g class="node" data-id="Haplotype" data-label="GATK HaplotypeCaller: Call High-Confidence SNPs &amp; Indels" data-shape="rectangle">
+  <rect x="541.047" y="599.4000000000001" width="385.0329999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="617.8500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">GATK HaplotypeCaller: Call High-Confidence SNPs &amp; Indels</text>
+</g>
+<g class="node" data-id="Filter" data-label="GATK VariantFiltration: Hard-Filtering" data-shape="rectangle">
+  <rect x="602.55" y="684.3" width="262.02699999999993" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="702.75" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">GATK VariantFiltration: Hard-Filtering</text>
+</g>
+<g class="node" data-id="CoreSNPs" data-label="Core Biallelic SNP Matrix" data-shape="rectangle">
+  <rect x="639.2294999999999" y="769.2" width="188.668" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="787.6500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Core Biallelic SNP Matrix</text>
+</g>
+<g class="node" data-id="IQTREE" data-label="IQ-TREE 2: GTR+F+R8 + UFBoot2" data-shape="rectangle">
+  <rect x="614.406" y="854.0999999999999" width="238.31499999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="872.55" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">IQ-TREE 2: GTR+F+R8 + UFBoot2</text>
+</g>
+<g class="node" data-id="Clonal" data-label="ClonalFrameML: Recombination Correction" data-shape="rectangle">
+  <rect x="586.248" y="939" width="294.631" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="957.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">ClonalFrameML: Recombination Correction</text>
+</g>
+<g class="node" data-id="Tree" data-label="Phylogenetic Tree" data-shape="rectangle">
+  <rect x="658.125" y="1023.8999999999999" width="150.877" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="733.5635" y="1042.35" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Phylogenetic Tree</text>
+</g>
+</svg>
