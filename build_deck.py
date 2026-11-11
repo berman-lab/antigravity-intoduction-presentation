@@ -11,11 +11,12 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx_animations import CardInfo, apply_card_animations
-from render_assets import render_paper_repro_svg, crop_agy_figure, render_git_tree_schematic
+from render_assets import render_paper_repro_svg, crop_agy_figure, crop_paper_figure, render_git_tree_schematic
 
 # Ensure intermediate visual assets are up-to-date
 render_paper_repro_svg()
 crop_agy_figure()
+crop_paper_figure()
 render_git_tree_schematic()
 
 # --- Presentation Setup ---
@@ -397,10 +398,10 @@ p7_l2.font.name = FONT_FAMILY
 p7_l2.font.size = Pt(13)
 p7_l2.font.color.rgb = COLOR_TEXT_SECONDARY
 
-# Paper figure_1.png (1200x688, aspect ratio 1.744)
-pic7_l_w = Inches(5.3)
-pic7_l_h = Inches(5.3 * (688 / 1200))
-pic7_paper = s7.shapes.add_picture("figure_1_paper.png", Inches(0.95), Inches(3.15), width=pic7_l_w, height=pic7_l_h)
+# Paper figure_1_paper_cropped.png (882x688, panels c & f removed, aspect ratio 1.282)
+pic7_l_w = Inches(4.75)
+pic7_l_h = Inches(4.75 * (688 / 882))
+pic7_paper = s7.shapes.add_picture("figure_1_paper_cropped.png", Inches(1.225), Inches(2.88), width=pic7_l_w, height=pic7_l_h)
 
 c7_right = add_card(s7, Inches(6.9), Inches(1.95), Inches(5.6), Inches(4.9), bg_color=COLOR_ACCENT_BG, border_color=COLOR_ACCENT)
 tb7_right = s7.shapes.add_textbox(Inches(7.1), Inches(2.06), Inches(5.2), Inches(0.65))

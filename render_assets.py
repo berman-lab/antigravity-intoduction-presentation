@@ -3,6 +3,7 @@ Render visual assets for Antigravity Lab Presentation:
 1. paper-repro-flow.png — High-resolution faithful render of paper-repro-flow.svg
 2. Figure_1_pangenome_analysis-AGY_cropped.png — Cleanly cropped AGY Figure 1 for side-by-side comparison
 3. git_tree_schematic.png — Publication-grade Git Version Control Tree diagram for Slide 25 (now 26)
+4. figure_1_paper_cropped.png — Original paper Figure 1 with panels c and f removed for Slide 8
 """
 
 import math
@@ -123,6 +124,19 @@ def crop_agy_figure(in_path="Figure_1_pangenome_analysis-AGY.png", out_path="Fig
         cropped = img.crop((left, top, right, bottom))
         cropped.save(out_path, "PNG", optimize=True)
         print(f"Saved cropped AGY figure to {out_path} ({cropped.size})")
+
+
+def crop_paper_figure(in_path="figure_1_paper.png", out_path="figure_1_paper_cropped.png"):
+    """Removes panels c and f from figure_1_paper.png and crops trailing whitespace."""
+    img = Image.open(in_path).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    # Blank out panel c (top-right: x >= 885, y < 346) and panel f (bottom-right: x >= 640, y >= 346)
+    draw.rectangle([885, 0, img.width, 345], fill=(255, 255, 255))
+    draw.rectangle([640, 346, img.width, img.height], fill=(255, 255, 255))
+    # Crop right edge just past panel b (ends at x=867) while preserving full height and left margin
+    cropped = img.crop((0, 0, 882, img.height))
+    cropped.save(out_path, "PNG", optimize=True)
+    print(f"Saved cropped paper figure to {out_path} ({cropped.size})")
 
 
 def cubic_bezier(p0, p1, p2, p3, steps=80):
@@ -377,4 +391,5 @@ def render_git_tree_schematic(out_path="git_tree_schematic.png"):
 if __name__ == "__main__":
     render_paper_repro_svg()
     crop_agy_figure()
+    crop_paper_figure()
     render_git_tree_schematic()
